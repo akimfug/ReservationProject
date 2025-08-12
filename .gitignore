@@ -33,10 +33,13 @@ yarn-error.log*
 *.swo
 
 # Build outputs
-/dist/
-/build/
+dist/
+build/
 /.next/
 /out/
+
+# Compiled files
+*.tsbuildinfo
 
 # Coverage reports
 /coverage/
