@@ -1,0 +1,90 @@
+// schema.prisma (MVP)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TableStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  OUT_OF_SERVICE
+}
+
+enum ReservationStatus {
+  PENDING     // создано, ожидает подтверждения/посадки
+  CONFIRMED   // подтверждено
+  SEATED      // гости посажены
+  COMPLETED   // гости ушли, стол освобождён
+  CANCELED
+  NO_SHOW
+}
+
+model Restaurant {
+  id        String  @id @default(cuid())
+  createdAt DateTime @default(now())
+  name      String
+
+  tables        Table[]
+  reservations  Reservation[]
+}
+
+model Table {
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
+  restaurantId String
+  restaurant   Restaurant   @relation(fields: [restaurantId], references: [id])
+
+  number       String       // "A12" или "15"
+  seats        Int          // кол-во мест
+  status       TableStatus  @default(AVAILABLE)
+
+  // опционально для плана зала (px/percent)
+  posX         Int?
+  posY         Int?
+
+  reservations Reservation[]
+
+  @@index([restaurantId])
+  @@unique([restaurantId, number]) // уникальный стол в пределах ресторана
+}
+
+model Reservation {
+  id           String            @id @default(cuid())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  restaurantId String
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id])
+
+  tableId      String?           // может быть null для очереди ожидания / walk-in до посадки
+  table        Table?            @relation(fields: [tableId], references: [id])
+
+  status       ReservationStatus @default(PENDING)
+
+  // данные гостя
+  guestName    String
+  phone        String?
+  partySize    Int
+
+  // плановые времена
+  startAt      DateTime          // время брони/посадки
+  expectedEnd  DateTime?         // опционально для аналитики
+
+  // фактические отметки
+  seatedAt     DateTime?
+  completedAt  DateTime?
+
+  specialReq   String?
+
+  // walk-in признак — гостя посадили без предварительной брони
+  isWalkIn     Boolean           @default(false)
+
+  @@index([restaurantId, startAt])
+  @@index([tableId, status])
+}
